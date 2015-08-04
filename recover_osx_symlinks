@@ -1,0 +1,51 @@
+#!/bin/sh
+
+
+########################################################################
+#
+# A Shell script to recover symbolic links created in Mac OSX to Linux.
+#  OS X has a particularly horrible way of pretending it supports symlinks 
+#  on FAT filesystems - 
+#  it'll create a file with some contents, and transparently interpret 
+#  that as a symlink. Which is all well and good, until you try to use 
+#  that external HDD on another system, say, a Linux fileserver.
+#  For details on problem see:
+#  https://www.tucuxi.org/os-x-vfat/
+#
+# This script tries to recover the links made in OSX.
+# USAGE:
+# ./recover_osx_symlinks <directory_to_search_for_links>
+#
+#######################################################################
+
+
+
+if [ -z "$1" ]
+then
+    echo "Usage: $0 <dir>"
+fi
+
+CURRENT_DIR=${1}
+
+for file in `find ${CURRENT_DIR} -name "*"`
+do
+	if [ ! -d ${file} ]
+	then
+        	first_line=`head -1 ${file}`
+		if [ "${first_line}" == "XSym" ]
+		then
+			base="`dirname $file`"
+			symlink_name="`head -4 ${file} | tail -1`"
+			symlink_file="${base}/${symlink_name}"
+			if [ -f ${symlink_file} ]
+			then
+				echo "Recovering link of ${file} -> ${symlink_file}"
+				rm ${file}
+				echo "Executing: ln -s ${symlink_name} ${file}"
+				ln -s ${symlink_name} ${file}
+			else
+				echo "Can't recover the link of ${file}, ${symlink_file} does not exist"
+			fi
+		fi
+	fi
+done	
